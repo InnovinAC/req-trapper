@@ -1,0 +1,19 @@
+{
+  "name": "req-trapper",
+  "version": "1.0.0",
+  "description": "A package to help you easily validate your request body in express js.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "request",
+    "middleware"
+  ],
+  "author": "Innovin Anuonye",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "typescript": "^5.3.3"
+  }
+}
