@@ -44,12 +44,8 @@ export class ReqTrapper {
             return;
         });
 
-        const errs = {...this.errors};
-        this.setRules([]);
-        this.errors = {};
-
-        if (Object.keys(errs)?.length > 0) {
-            res.status(400).json({error: errs});
+        if (Object.keys(this.errors)?.length > 0) {
+            res.status(400).json({error: this.errors});
         } else {
 
             this.next && this.next();
@@ -59,7 +55,6 @@ export class ReqTrapper {
 
 
     setRules(rulesArray: RuleSet[]) {
-        // return  this.next && this.next(new Error("error"), this.req, this.res);
         if (!Array.isArray(rulesArray)) {
             throw new Error("Invalid rule set passed")
         } else {
@@ -81,6 +76,7 @@ export class ReqTrapper {
             const validations = this.helpers.explodeValidation(rule?.validation);
             validations.forEach((validation) => {
                 const attribute = validation?.split(':')?.[1];
+                validation = validation?.split(':')?.[0];
                 if (!this.isValid(value, validation, attribute)) {
                     this.errors[rule?.name] = this.outputError(rule?.name, validation, attribute);
                     throw new Error("Break out of catch")
@@ -103,6 +99,7 @@ export class ReqTrapper {
             case 'number':
                 return this.helpers.isNumber(value);
             case 'min':
+                console.log(attribute)
                 return this.helpers.minimumOf(value, attribute);
             default:
                 return false;
@@ -110,7 +107,8 @@ export class ReqTrapper {
     }
 
     private outputError(field: string, validation: string, attribute?: string | number) {
-        return ErrorMessages[(validation.toUpperCase())].replace(':field', field);
+        console.log({validation})
+        return ErrorMessages[(validation.toUpperCase())].replace(':field', field).replace(':attribute', attribute);
     }
 
     private helpers = {
