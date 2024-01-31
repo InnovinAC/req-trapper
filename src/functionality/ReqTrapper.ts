@@ -27,12 +27,7 @@ export class ReqTrapper {
     /**
 
     ## The middleware
-    Pass this to your router handler.
-
-    usage:
-    ```js
-    router.post('/example', reqTrapper.middleware());
-    ```
+    This handles the request
 
      @param req Express Request
      @param res Express Response
@@ -49,21 +44,35 @@ export class ReqTrapper {
             return;
         });
 
-        if (Object.keys(this.errors)?.length > 0) {
-            res.status(400).json({error: this.errors});
+        const errs = {...this.errors};
+        this.setRules([]);
+        this.errors = {};
+
+        if (Object.keys(errs)?.length > 0) {
+            res.status(400).json({error: errs});
         } else {
-            next();
+
+            this.next && this.next();
         }
     }
 
 
 
     setRules(rulesArray: RuleSet[]) {
+        // return  this.next && this.next(new Error("error"), this.req, this.res);
         if (!Array.isArray(rulesArray)) {
             throw new Error("Invalid rule set passed")
         } else {
             this.rules = rulesArray;
         }
+    }
+
+
+    // Helps with multi requests usage
+    validate(rulesArray: RuleSet[]) {
+        const newInstance = new ReqTrapper()
+        newInstance.setRules(rulesArray);
+        return newInstance.middleware;
     }
 
     private handleValidation(rule: RuleSet) {
@@ -72,10 +81,11 @@ export class ReqTrapper {
             const validations = this.helpers.explodeValidation(rule?.validation);
             validations.forEach((validation) => {
                 const attribute = validation?.split(':')?.[1];
-                if (!this.validate(value, validation, attribute)) {
+                if (!this.isValid(value, validation, attribute)) {
                     this.errors[rule?.name] = this.outputError(rule?.name, validation, attribute);
                     throw new Error("Break out of catch")
-
+                } else {
+                    return;
                 }
             })
         } catch (e) { // catch block to escape out of foreach loop
@@ -86,20 +96,21 @@ export class ReqTrapper {
 
     }
 
-    private validate(value: any, validation: string, attribute?: any) {
+    private isValid(value: any, validation: string, attribute?: any) {
         switch (validation) {
             case 'required':
                 return this.helpers.exists(value);
             case 'number':
                 return this.helpers.isNumber(value);
+            case 'min':
+                return this.helpers.minimumOf(value, attribute);
             default:
                 return false;
         }
     }
 
     private outputError(field: string, validation: string, attribute?: string | number) {
-        // @ts-ignore
-        return ErrorMessages[validation.toUpperCase()].replace(':field', field);
+        return ErrorMessages[(validation.toUpperCase())].replace(':field', field);
     }
 
     private helpers = {
@@ -111,6 +122,12 @@ export class ReqTrapper {
         },
         isNumber: (value: any) => {
             return Number.isInteger(+value); // The plus sign attempts to convert the string to a number
+        },
+        minimumOf: (value: string, num: number) => {
+            if (this.helpers.exists(value)) {
+                return value?.length >= num
+            }
+            return false;
         }
     }
 
