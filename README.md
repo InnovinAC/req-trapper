@@ -28,24 +28,30 @@ import express from 'express';
 const app = express();
 const reqTrapper = new ReqTrapper();
 
-// Define validation rules
-reqTrapper.setRules([
-  { name: 'phone', validation: 'required|number' },
-]);
+
 
 // Use req-trapper as middleware
-app.post('/example', reqTrapper.middleware, (req, res) => {
+app.post('/example',
+    reqTrapper.validate([{ name: 'phone', validation: 'required|number' }]), // validation rules
+    (req, res) => {
   // Your route logic here
 });
+
+// works across multiple requests
+app.post('/example2',
+    reqTrapper.validate([{ name: 'email', validation: 'required|email' }]), // validation rules
+    (req, res) => {
+        // Your route logic here
+    });
 ```
 
 ## Rules
 - `required`: Ensures that the specified field exists in the request data.
 - `number`: Ensures that the specified field is a number.
-Feel free to extend the rules according to your application's requirements.
+- `min:x` Ensures that the specified field has at least ```x``` characters. ```x``` should be a number
 
-Contributing
+## Contributing
 Contributions are welcome! Feel free to open issues or submit pull requests.
 
-License
-This project is licensed under the ISC License - see the LICENSE file for details.
+## License
+This project is licensed under the ISC License.
