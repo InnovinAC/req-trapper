@@ -1,11 +1,11 @@
 import {NextFunction, Request, Response} from "express";
 import {RuleSet} from "../interfaces";
 import ErrorMessages from "../ErrorMessages";
-import Helpers from "./Helpers";
+import Helpers, {IHelpers} from "./Helpers";
 
 // @Todo Allow custom validation
 // @Todo Add in more validations
-// Todo - Create means to skip validation if required is not set
+// Todo - Create means to skip validation if required is not set  - @Done
 
 /**
  @classdesc Main class for request trapper.
@@ -25,10 +25,10 @@ export class ReqTrapper {
     private errors: {[key: string]: any} = {};
     private rules: RuleSet[] = [];
     private validations: string[] = [];
-    private helpers: any;
+    private helpers: Helpers;
 
     constructor() {
-        // this.helpers = new Helpers({validations: null})
+        this.helpers = new Helpers({validations: null})
     }
 
     /**
@@ -41,7 +41,7 @@ export class ReqTrapper {
      @param next Express NextFunction
      @returns void
      */
-    middleware = (req: Request, res: Response, next: NextFunction) => {
+    private middleware = (req: Request, res: Response, next: NextFunction) => {
         req && (this.req = req) && (this.requestBody = req.body);
         res && (this.res = res);
         next && (this.next = next);
@@ -101,7 +101,7 @@ export class ReqTrapper {
         }
     }
 
-    explodeValidation(validation: string): string[] {
+    private explodeValidation(validation: string): string[] {
         return validation?.split("|") || [];
     }
 
@@ -134,5 +134,7 @@ export class ReqTrapper {
             .replace(":attribute", attribute);
         return errorMessage ?? "Error message not yet defined";
     }
+
+
 
 }
