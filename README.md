@@ -1,6 +1,3 @@
-Here's the full README in markdown with all the validation rules and examples, covering the complete documentation for `req-trapper`.
-
-
 # req-trapper
 
 `req-trapper` is an Express middleware for request validation inspired by Laravel's request validation. It allows you to define validation rules for your API requests and ensures that incoming data in the request payload meets your specified criteria.
