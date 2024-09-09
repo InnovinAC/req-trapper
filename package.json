@@ -1,10 +1,11 @@
 {
   "name": "req-trapper",
-  "version": "1.0.05",
+  "version": "1.1.00",
   "description": "A package to help you easily validate your request body in express js.",
   "main": "./dist/index.js",
   "scripts": {
     "build": "npx tsup ./src",
+    "dev": "npm run build && node dist/server",
     "test": "echo \"Error: no test specified\" && exit 1",
     "test-server": "npm run build; node dist/server"
   },

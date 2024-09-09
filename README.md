@@ -9,6 +9,11 @@
 - **Middleware Integration:** Easily integrate `req-trapper` into your Express application as middleware for route-specific request validation.
 
 - **Extensible:** Customize validation rules to suit your application's specific needs(This is in progress)
+# Documentation
+1. [Installation](#installation)
+2. [Usage](#usage)
+   1. [Basic Example](#basic-example) 
+3. [Rules](#rules)
 
 ## Installation
 
@@ -46,9 +51,16 @@ app.post('/example2',
 ```
 
 ## Rules
-- `required`: Ensures that the specified field exists in the request data.
-- `number`: Ensures that the specified field is a number.
-- `min:x` Ensures that the specified field has at least ```x``` characters. ```x``` should be a number
+* <a href="#required">Required</a>
+* <a href="#number">Number</a>
+* <a href="#min">Min</a>
+### required
+Ensures that the specified field exists in the request data.
+
+### number
+Ensures that the specified field is a number.
+### min:x
+Ensures that the specified field has at least ```x``` characters. ```x``` should be a number
 
 ## Contributing
 Contributions are welcome! Feel free to open issues or submit pull requests.

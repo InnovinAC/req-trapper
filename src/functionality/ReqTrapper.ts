@@ -1,61 +1,50 @@
-import {NextFunction, Request, Response} from "express";
-import {RuleSet} from "../interfaces";
+import { NextFunction, Request, Response } from "express";
+import { RuleSet } from "../interfaces";
 import ErrorMessages from "../ErrorMessages";
-import Helpers, {IHelpers} from "./Helpers";
+import Helpers from "./Helpers";
 
-// @Todo Allow custom validation
-// @Todo Add in more validations
-// Todo - Create means to skip validation if required is not set  - @Done
+type TCustomValidation = {
+    action: (value: string, args?: any) => any,
+    validation: string
+};
 
-/**
- @classdesc Main class for request trapper.
-  This class is what initiates the whole process. More like the engine.
- * @member req
- * @member res
- * @member next
- * @member errors
- * @member rules
- * @member helpers
- */
+interface IReqTrapperConstructor {
+    customValidations?: TCustomValidation[],
+    helpers?: Helpers
+}
+
 export class ReqTrapper {
     private req: Request | null = null;
     private res: Response | null = null;
     private next: NextFunction | null = null;
     private requestBody: any | null = null;
-    private errors: {[key: string]: any} = {};
+    private errors: { [key: string]: any } = {};
     private rules: RuleSet[] = [];
-    private validations: string[] = [];
+    private customMessages: { [key: string]: string } = {};
+    private readonly customValidations: TCustomValidation[] = [];
     private helpers: Helpers;
 
-    constructor() {
-        this.helpers = new Helpers({validations: null})
+    constructor({customValidations = [], helpers}: IReqTrapperConstructor = {}) {
+        this.customValidations = customValidations;
+        this.helpers = helpers!;
+        this.errors = {}; // reset errors
     }
 
-    /**
-
-     ## The middleware
-     This handles the request
-
-     @param req Express Request
-     @param res Express Response
-     @param next Express NextFunction
-     @returns void
-     */
     private middleware = (req: Request, res: Response, next: NextFunction) => {
-        req && (this.req = req) && (this.requestBody = req.body);
-        res && (this.res = res);
-        next && (this.next = next);
+        this.req = req;
+        this.requestBody = req.body;
+        this.res = res;
+        this.next = next;
 
-        this.rules.map((rule: RuleSet) => {
-            this.handleValidation(rule);
-            return;
-        });
-        const errors = {...this.errors}
-        this.errors = {};
-        if (Object.keys(errors)?.length > 0) {
-            res.status(400).json({errors, success: false, data: null});
+
+
+        this.rules.forEach((rule) => this.handleValidation(rule));
+        console.log(this.errors)
+        if (Object.keys(this.errors).length > 0) {
+            res.status(400).json({ errors: this.errors });
         } else {
-            this.next && this.next();
+
+            next();
         }
     };
 
@@ -67,37 +56,36 @@ export class ReqTrapper {
         }
     }
 
-    // Helps with multi requests usage
-    validate(rulesArray: RuleSet[]) {
-        const newInstance = new ReqTrapper();
-        newInstance.setRules(rulesArray);
-        return newInstance.middleware;
+    setCustomMessages(messages: { [key: string]: string }) {
+        this.customMessages = messages;
     }
 
+    validate(rulesArray: RuleSet[]) {
+        const instance = new ReqTrapper({customValidations: this.customValidations, helpers: new Helpers()});
+        instance.setRules(rulesArray);
+        return instance.middleware;
+    }
+
+    // TODO: Add to error message
+    // addValidation(name: string, callback: (value: string) => any) {
+    //     this.customValidations.push({
+    //         validation: name,
+    //         action: callback,
+    //     });
+    // }
+
     private handleValidation(rule: RuleSet) {
-        try {
-            console.log("ln 78 /n",this.errors);
-            const value = this.requestBody?.[rule?.name];
+        const value = this.requestBody?.[rule?.name];
+        const validations = this.explodeValidation(rule?.validation);
 
-            const validations = this.explodeValidation(rule?.validation);
-            this.helpers = new Helpers({validations})
+        for (let validation of validations) {
+            const [validationName, attribute] = validation.split(":");
+            const valid = this.isValid(value, validationName, attribute);
 
-            for (let validation of validations) {
-                const attribute = validation?.split(":")?.[1];
-                validation = validation?.split(":")?.[0];
-                if (!this.isValid(value, validation, attribute)) {
-                    this.errors[rule?.name] = this.outputError(
-                        rule?.name,
-                        validation,
-                        attribute,
-                    );
-                    break; // break out of for loop
-                }
+            if (!valid) {
+                this.errors[rule?.name] = this.getErrorMessage(rule?.name, validationName, attribute);
+                break;
             }
-
-        } catch (e) {
-            console.error(e)
-            return e;
         }
     }
 
@@ -105,36 +93,87 @@ export class ReqTrapper {
         return validation?.split("|") || [];
     }
 
-    private isValid(value: any, validation: string, attribute?: any) {
+    private isValid(value: any, validation: string, attribute?: any): boolean {
         switch (validation) {
             case "required":
                 return this.helpers.exists(value);
-            case "number":
-                return this.helpers.isNumber(value);
+            case "email":
+                return this.helpers.isEmail(value);
             case "min":
                 return this.helpers.minimumOf(value, attribute);
             case "max":
                 return this.helpers.maximumOf(value, attribute);
-            case "in_array":
+            case "in":
                 return this.helpers.isInArray(value, attribute);
+            case "number":
+                return this.helpers.isNumber(value);
+            case "greater_than":
+                return this.helpers.isGreaterThanNum(value, attribute);
             case "nullable":
                 return true;
+            case "url":
+                return this.helpers.isUrl(value);
+            case "boolean":
+                return this.helpers.isBoolean(value);
+            case "alpha":
+                return this.helpers.isAlpha(value);
+            case "alpha_num":
+                return this.helpers.isAlphaNum(value);
+            case "array":
+                return Array.isArray(value);
+            case "json":
+                return this.helpers.isJson(value);
+            // case "confirmed":
+            //     return value === this.requestBody?.[`${rule.name}_confirmation`];
+            case "date":
+                return this.helpers.isDate(value);
+            case "after":
+                return this.helpers.isAfter(value, attribute);
+            case "before":
+                return this.helpers.isBefore(value, attribute);
+            case "unique":
+                return this.helpers.isUnique(value, attribute); // I will need to define the database check
+            case "digits":
+                return this.helpers.isDigits(value, attribute);
+            case "digits_between":
+                return this.helpers.isDigitsBetween(value, attribute);
+            case "exists":
+                return this.helpers.existsInDb(value, attribute); // I will need to define the database check
+            case "image":
+                return this.helpers.isImage(value); // Check for image types
+            case "file":
+                return this.helpers.isFile(value); // General file validation
+            case "mimes":
+                return this.helpers.isMimeType(value, attribute); // Check file MIME types
+            case "required_if":
+                return this.helpers.requiredIf(this.requestBody?.[attribute], value);
+            case "required_unless":
+                return this.helpers.requiredUnless(this.requestBody?.[attribute], value);
+            case "required_with":
+                return this.helpers.requiredWith(this.requestBody?.[attribute], value);
+            case "required_with_all":
+                return this.helpers.requiredWithAll(this.requestBody, attribute, value);
+            case "required_without":
+                return this.helpers.requiredWithout(this.requestBody?.[attribute], value);
+            case "required_without_all":
+                return this.helpers.requiredWithoutAll(this.requestBody, attribute, value);
             default:
+                const foundCustomValidation = this.customValidations.find((item) => item.validation === validation);
+                if (foundCustomValidation) {
+                    return foundCustomValidation.action(value, attribute) ?? false;
+                }
                 return false;
         }
     }
 
-    private outputError(
-        field: string,
-        validation: string,
-        attribute?: string | number,
-    ) {
-        const errorMessage = ErrorMessages?.[validation.toUpperCase()]
+    private getErrorMessage(field: string, validation: string, attribute?: any) {
+        const customMessageKey = `${field}.${validation}`;
+        if (this.customMessages[customMessageKey]) {
+            return this.customMessages[customMessageKey];
+        }
+        const errorMessage = (ErrorMessages?.[validation.toUpperCase()] ?? "")
             .replace(":field", field)
             .replace(":attribute", attribute);
-        return errorMessage ?? "Error message not yet defined";
+        return errorMessage || "Validation error";
     }
-
-
-
 }
