@@ -1,4 +1,6 @@
-const ErrorMessages: any = Object.create({
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const ErrorMessages = Object.create({
     REQUIRED: 'The :field is required',
     EMAIL: 'The :field must be a valid email address',
     MIN: 'The :field must be at least :attribute characters',
@@ -29,5 +31,4 @@ const ErrorMessages: any = Object.create({
     REQUIRED_WITHOUT: 'The :field is required when :attribute is not present',
     REQUIRED_WITHOUT_ALL: 'The :field is required when none of :attribute are present',
 });
-
-export default ErrorMessages;
+exports.default = ErrorMessages;
